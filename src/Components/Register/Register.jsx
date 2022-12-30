@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import './Register.css'
 const backendUrl = process.env.NODE_ENV === 'production' ? process.env.REACT_APP_PRODUCTION_BACKEND_URL : process.env.REACT_APP_DEVELOPMENT_BACKEND_URL
 
 class Register extends Component {
