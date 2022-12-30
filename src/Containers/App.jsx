@@ -1,7 +1,7 @@
-import React, { Component } from 'react';
+
+import React, { useState } from 'react'
 import './App.css';
 import ParticlesBg from 'particles-bg'
-// import BlurBG from '../Components/BlurBG/BlurBG'
 import Logo from '../Components/Logo/Logo'
 import Navigation from '../Components/Navigation/Navigation'
 import Rank from '../Components/Rank/Rank'
@@ -20,63 +20,66 @@ const isValidUrl = urlString => {
     }
 }
 
-class App extends Component {
-    constructor() {
-        super();
-        this.state = {
-            input: '',
-            imageURL: '',
-            boxes: [],
-            route: 'signin',
-            logonStatus: false,
-            logonSession: {},
-            sessionStatus: 0
+const App = () => {
+    const [input, updateInput] = useState('')
+    const [imageURL, updateImageURL] = useState('')
+    const [boxes, updateBoxes] = useState([])
+    const [route, updateRoute] = useState('signin')
+    const [logonStatus, updateLogonStatus] = useState(false)
+    const [logonSession, updateLogonSession] = useState({})
+    // const [sessionStatus, updateSessionStatus] = useState(false)
+
+    const logonSessionPassthrough = async (req, obj) => {
+        if (!req || req.toLowerCase() === 'get') return logonSession
+        if (req.toLowerCase()==='post') {
+            obj ? 
+            updateLogonSession(obj)
+            :
+            updateLogonSession({})
+            return logonSession
         }
+        
     }
 
-    logonSession = async (obj) => {
-        if (obj) {
-            await this.setState({logonSession: obj})
-            return this.state.logonSession
-        }
-        return this.state.logonSession
+    const onInputChange = event => {
+        updateInput(event.target.value)
     }
 
-    onInputChange = (event) => {
-        this.setState({input: event.target.value})
-    }
-
-    onButtonSubmit = async () => {
+    const onButtonSubmit = async () => {
         // Fail if url is invalid
-        if (!isValidUrl(this.state.input)) {return}
-        await this.setState({ imageURL: this.state.input, boxes: [] });
-
+        if (!isValidUrl(input)) return
+        updateImageURL(input)
+        updateBoxes([])
+        
         // Fail if no session
-        if (Object.keys(this.state.logonSession).length === 0) {return}
-        let {session} = this.state.logonSession
+        if (!logonSession) return
+        let { session } = logonSession
         fetch(`${backendUrl}/image`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: session.id,
                 sessionid: session.sessionid,
-                url: this.state.imageURL
+                url: input
             })
         }).then(res => res.json()).then(res => {
             const { status, reason, logonSession, regions } = res
-            if (logonSession) this.logonSession(logonSession)
-            if (status === 'success') this.processImage(regions)
+            if (logonSession) updateLogonSession(logonSession)
+            if (status === 'success') processImage(regions)
             if (status === 'failure') {
-                if (!reason) {}
+                if (reason === 'invalidSession') {
+                    // TODO: Make a pop-up that informs the user that their session expired, log them out. 
+                    onRouteChange('signin')
+                }
             }
         }).catch(console.err)
     }
 
-    processImage = regions => {
+    const processImage = regions => {
         const img = document.getElementById('ProccessedImage')
         const w = Number(img.width)
         const h = Number(img.height)
-        let boxes = []
+        let newBoxes = []
         for (let i = 0; i < regions.length; i++) {
             let box = regions[i]
             box = {
@@ -85,44 +88,47 @@ class App extends Component {
                 rightCol: w - box.right_col * w,
                 bottomRow: h - box.bottom_row * h
             }
-            boxes.push(box)
+            newBoxes.push(box)
         }
-        this.setState({ boxes: boxes })
+        updateBoxes(newBoxes)
     }
 
-    onRouteChange = (newRoute) => {
-        this.setState({ route: newRoute })
-        if (newRoute === 'home' ) {
-            this.setState({ logonStatus: true })
-        } else { this.setState({ logonStatus: false, logonSession: {}, imageURL: '', boxes: [] }) }
+    const onRouteChange = (newRoute) => {
+        updateRoute(newRoute)
+        if (newRoute === 'home') {
+            updateLogonStatus(true)
+        } else { 
+            updateLogonStatus(false)
+            updateLogonSession({})
+            updateImageURL('')
+            updateBoxes([])
+        }
     }
 
-    render() {
-        let { logonStatus, route, imageURL, boxes } = this.state
-        return (
-            <>
-                <ParticlesBg
-                    type="cobweb"
-                    bg={true}
-                />
-                <Navigation onRouteChange={this.onRouteChange} logonStatus={logonStatus} logonSession={this.logonSession} />
-                <Logo />
-                {route === 'home' ?
-                    <>
-                    <Rank user={this.state.logonSession.user}/>
-                    <URLInput onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit} logonSession={this.logonSession} />
+
+    return (
+        <>
+            <ParticlesBg
+                type="cobweb"
+                bg={true}
+            />
+            <Navigation onRouteChange={onRouteChange} logonStatus={logonStatus}/>
+            <Logo />
+            {route === 'home' ?
+                <>
+                    <Rank user={logonSession.user} />
+                    <URLInput onInputChange={onInputChange} onButtonSubmit={onButtonSubmit} logonSessionPassthrough={logonSessionPassthrough} />
                     <ProcessedImage imageURL={imageURL} boxes={boxes} />
-                    </>
-                    :(
-                        route === 'signin' ?
-                        <SignIn onRouteChange={this.onRouteChange} logonSession={this.logonSession} />
+                </>
+                : (
+                    route === 'signin' ?
+                        <SignIn onRouteChange={onRouteChange} logonSessionPassthrough={logonSessionPassthrough} />
                         :
-                        <Register onRouteChange={this.onRouteChange} logonSession={this.logonSession} /> 
-                    )
-                }
-            </>
-        );
-    }
+                        <Register onRouteChange={onRouteChange} logonSessionPassthrough={logonSessionPassthrough} />
+                )
+            }
+        </>
+    );
 }
 
 export default App;
