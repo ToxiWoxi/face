@@ -1,7 +1,6 @@
 import './URLInput.css'
 
-
-const URLInput = ({ onInputChange, onButtonSubmit, logonSession }) => {
+const URLInput = ({ onInputChange, onButtonSubmit, logonSessionPassthrough }) => {
     return (
         <>
             <p className='f3 white tc mt5 mb3'>
