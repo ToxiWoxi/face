@@ -1,5 +1,4 @@
 import Tilt from 'react-parallax-tilt';
-import './Logo.css'
 import img from './Logo.svg'
 
 
